@@ -1,21 +1,20 @@
 package main
 
 import (
-    //"bufio"
     "fmt"
-    //"github.com/rabbitmq/rabbitmq-stream-go-client/pkg/amqp"
-    //"github.com/rabbitmq/rabbitmq-stream-go-client/pkg/stream"
+    "github.com/streadway/amqp"
     "log"
     "os"
+    "encoding/json"
 )
+
+type Product struct {
+    Name  string  `json:"name"`
+    Value string `json:"value"`
+}
 
 type CreditCard struct {
 	number, securityNumber string
-}
-
-type Product struct {
-	name string
-	value float64
 }
 
 type Address struct {
@@ -23,20 +22,22 @@ type Address struct {
 }
 
 type Order struct {
-	name, email, cpf string
-	creditCard CreditCard
-	products []Product
-	address Address
+    Name       string     `json:"name"`
+    Email      string     `json:"email"`
+    CPF        string     `json:"cpf"`
+    CreditCard CreditCard `json:"creditCard"`
+    Products   []Product  `json:"products"`
+    Address    Address    `json:"address"`
 }
 
 func updateReports(report map[string]int, products []Product) map[string]int {
 	for _, product := range(products) {
-		if(len(product.name) < 0) {
+		if(len(product.Name) < 0) {
             continue
-        }else if _, ok := report[product.name]; !ok {
-            report[product.name] = 1;
+        }else if _, ok := report[product.Name]; !ok {
+            report[product.Name] = 1;
         }else {
-            report[product.name]++;
+            report[product.Name]++;
         }
 	}
 	return report
@@ -48,17 +49,17 @@ func printReport(report map[string]int) {
 	}
 }
 
-func processMessage(msg Order) {
+func processMessage(msg amqp.Delivery) {
 	log.Println("Pedido recebido com sucesso!")
-	/*msgJson, err := json.MarshalIndent(mailData, "", "  ")
+	var order Order
+    err := json.Unmarshal(msg.Body, &order)
     if err != nil {
-        log.Printf("Failed to convert to JSON: %v", err)
+        log.Printf("Failed to parse message: %v", err)
         return
     }
-	log.Println(string(msgJson))*/
 
 	report := make(map[string]int)
-	report = updateReports(report, msg.products)
+	report = updateReports(report, order.Products)
 	printReport(report)
 }
 
